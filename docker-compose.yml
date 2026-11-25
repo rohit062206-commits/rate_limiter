@@ -1,0 +1,36 @@
+version: "3.8"
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: rate_limiter_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rate_limiter_app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - RATE_LIMIT_WINDOW_SEC=60
+      - RATE_LIMIT_MAX_REQUESTS=100
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+
+volumes:
+  redis_data:
